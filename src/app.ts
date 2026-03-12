@@ -5,11 +5,10 @@ const wss = new WebSocketServer({ port: 8000 });
 // Connection Event
 wss.on("connection", (socket, request) => {
   const ip = request.socket.remoteAddress;
-  console.log(ip);
 
   socket.on("message", (rawData) => {
     const message = rawData.toString();
-    console.log({ rawData });
+    console.log({ rawData, message });
 
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN)
