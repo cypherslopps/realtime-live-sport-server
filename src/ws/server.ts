@@ -37,7 +37,7 @@ export function attachWebSocketServer(server: HttpServer) {
   server.on("upgrade", async (req, socket, head) => {
     if (req.url === "/ws" || req.url === "/ws/") {
       try {
-        const decision = await wsArcjet.protect(req as any);
+        const decision = await wsArcjet.protect(req);
 
         if (decision.isDenied()) {
           const statusCode = decision.reason.isRateLimit() ? 429 : 403;
@@ -75,7 +75,7 @@ export function attachWebSocketServer(server: HttpServer) {
 
   wss.on("close", () => clearInterval(interval));
 
-  wss.on("connection", (socket, req) => {
+  wss.on("connection", (socket) => {
     (socket as ExtendedWebSocket).isAlive = true;
     (socket as ExtendedWebSocket).on(
       "pong",

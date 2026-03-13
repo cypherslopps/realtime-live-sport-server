@@ -13,7 +13,7 @@ const arcjectRules = [
     allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
   }),
   slidingWindow({ mode: arcjetMode, interval: "2s", max: 5 }),
-]
+];
 
 export const httpArcjet = arcjet({
   key: arcjetKey,
@@ -27,7 +27,6 @@ export const wsArcjet = arcjet({
 
 export function securityMiddleware() {
   return async (req: Request, res: Response, next: NextFunction) => {
-
     try {
       const decision = await httpArcjet.protect(req);
 
