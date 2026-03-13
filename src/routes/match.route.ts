@@ -49,8 +49,8 @@ matchRouter.post("/", async (req, res) => {
   }
 
   const { startTime, endTime, homeScore, awayScore } = parsed.data;
-  const status = getMatchStatus(startTime, endTime) ?? "scheduled";
-  if (!status) {
+  const status = getMatchStatus(startTime, endTime);
+  if (status == null) {
     return res.status(400).json({ error: "Invalid match time range." });
   }
 
