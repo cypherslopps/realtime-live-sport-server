@@ -39,7 +39,7 @@ export async function syncMatchStatus<T extends MatchData>(
   }
   if (match.status !== nextStatus) {
     await updateStatus(nextStatus);
-    match.status = nextStatus;
+    return nextStatus;
   }
   return match.status;
 }

@@ -1,8 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import { matchRouter } from "./routes/match.route";
 
 const app = express();
-const port = 8000;
+const port = process.env.port || 8000;
 
 app.use(express.json());
 
