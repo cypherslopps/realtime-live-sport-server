@@ -1,6 +1,7 @@
 import { Server as HttpServer } from "http";
 import { WebSocket, Server as WebSocketServer } from "ws";
 import { Matches } from "../db/schema";
+import { wsArcjet } from "../arcjet";
 
 interface JsonPayload {
   [key: string]: unknown;
@@ -28,9 +29,37 @@ function broadcast(wss: WebSocketServer, payload: JsonPayload): void {
 
 export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({
-    server,
+    noServer: true,
     path: "/ws",
     maxPayload: 1024 * 1024,
+  });
+
+  server.on("upgrade", async (req, socket, head) => {
+    if (req.url === "/ws" || req.url === "/ws/") {
+      try {
+        const decision = await wsArcjet.protect(req);
+
+        if (decision.isDenied()) {
+          const statusCode = decision.reason.isRateLimit() ? 429 : 403;
+          const reason = decision.reason.isRateLimit()
+            ? "Too Many Requests"
+            : "Forbidden";
+          socket.write(`HTTP/1.1 ${statusCode} ${reason}\r\n\r\n`);
+          socket.destroy();
+          return;
+        }
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+          wss.emit("connection", ws, req);
+        });
+      } catch (err) {
+        console.error("WS connection error", err);
+        socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        socket.destroy();
+      }
+    } else {
+      socket.destroy();
+    }
   });
 
   const interval = setInterval(() => {
