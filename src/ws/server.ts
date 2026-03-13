@@ -29,9 +29,37 @@ function broadcast(wss: WebSocketServer, payload: JsonPayload): void {
 
 export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({
-    server,
+    noServer: true,
     path: "/ws",
     maxPayload: 1024 * 1024,
+  });
+
+  server.on("upgrade", async (req, socket, head) => {
+    if (req.url === "/ws" || req.url === "/ws/") {
+      try {
+        const decision = await wsArcjet.protect(req as any);
+
+        if (decision.isDenied()) {
+          const statusCode = decision.reason.isRateLimit() ? 429 : 403;
+          const reason = decision.reason.isRateLimit()
+            ? "Too Many Requests"
+            : "Forbidden";
+          socket.write(`HTTP/1.1 ${statusCode} ${reason}\r\n\r\n`);
+          socket.destroy();
+          return;
+        }
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+          wss.emit("connection", ws, req);
+        });
+      } catch (err) {
+        console.error("WS connection error", err);
+        socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        socket.destroy();
+      }
+    } else {
+      socket.destroy();
+    }
   });
 
   const interval = setInterval(() => {
@@ -47,25 +75,7 @@ export function attachWebSocketServer(server: HttpServer) {
 
   wss.on("close", () => clearInterval(interval));
 
-  wss.on("connection", async (socket, req) => {
-    if (wsArcjet) {
-      try {
-        const decision = await wsArcjet.protect(req);
-
-        if (decision.isDenied()) {
-          const code = decision.reason.isRateLimit() ? 1013 : 1008;
-          const reason = decision.reason.isRateLimit()
-            ? "Rate limit exceeded"
-            : "Access denied";
-          socket.close(code, reason);
-          return;
-        }
-      } catch (err) {
-        console.error("WS connection error", err);
-        socket.close(1011, "Server security error");
-      }
-    }
-
+  wss.on("connection", (socket, req) => {
     (socket as ExtendedWebSocket).isAlive = true;
     (socket as ExtendedWebSocket).on(
       "pong",
