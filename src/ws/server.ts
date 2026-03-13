@@ -6,15 +6,23 @@ interface JsonPayload {
   [key: string]: unknown;
 }
 
+interface ExtendedWebSocket extends WebSocket {
+  isAlive?: boolean;
+}
+
 function sendJson(socket: WebSocket, payload: JsonPayload): void {
   if (socket.readyState !== WebSocket.OPEN) return;
 
-  socket.send(JSON.stringify(payload));
+  try {
+    socket.send(JSON.stringify(payload));
+  } catch (err) {
+    console.error("Failed to send WebSocket message:", err);
+  }
 }
 
 function broadcast(wss: WebSocketServer, payload: JsonPayload): void {
   wss.clients.forEach((client) => {
-    sendJson(client as WebSocket, payload);
+    sendJson(client, payload);
   });
 }
 
@@ -25,8 +33,26 @@ export function attachWebSocketServer(server: HttpServer) {
     maxPayload: 1024 * 1024,
   });
 
+  const interval = setInterval(() => {
+    wss.clients.forEach((client: ExtendedWebSocket) => {
+      if (!client.isAlive) {
+        client.terminate();
+        return;
+      }
+      client.isAlive = false;
+      client.ping();
+    });
+  }, 30000);
+
+  wss.on("close", () => clearInterval(interval));
+
   wss.on("connection", (socket) => {
-    sendJson(socket, { type: "Welcome" });
+    (socket as ExtendedWebSocket).isAlive = true;
+    (socket as ExtendedWebSocket).on(
+      "pong",
+      () => ((socket as ExtendedWebSocket).isAlive = true)
+    );
+    sendJson(socket, { type: "welcome" });
     socket.on("error", console.error);
   });
 

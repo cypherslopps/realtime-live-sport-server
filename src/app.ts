@@ -26,6 +26,6 @@ server.listen(PORT, HOST, () => {
     HOST === "0.0.0.0" ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`;
   console.log(`Server is running on ${baseUrl}`);
   console.log(
-    `WebSocket Server is running on ${baseUrl.replace("http", "ws")}/ws`
+    `WebSocket Server is running on ${baseUrl.replace(/^http/, "ws")}/ws`
   );
 });
