@@ -96,7 +96,15 @@ npm run dev
 ### 6) Seed demo data (optional)
 
 ```bash
-node --loader ts-node/esm src/seed/seed.ts
+npm run seed
+```
+
+### Seed data source
+
+The seeding script loads data from `src/data/data.json` by default. You can override the file by setting `SEED_DATA_FILE` in your `.env`.
+
+```env
+SEED_DATA_FILE=./src/data/custom-seed.json
 ```
 
 ---
