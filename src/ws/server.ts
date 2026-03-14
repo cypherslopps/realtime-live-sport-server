@@ -12,58 +12,9 @@ interface ExtendedWebSocket extends WebSocket {
   subscriptions?: Set<number>;
 }
 
-const matchSubscribers = new Map();
-
-function subscribe(matchId: number, socket: WebSocket) {
-  if (!matchSubscribers.has(matchId)) {
-    matchSubscribers.set(matchId, new Set());
-  }
-  matchSubscribers.get(matchId)?.add(socket);
-}
-
-function unsubscribe(matchId: number, socket: WebSocket) {
-  const subscribers = matchSubscribers.get(matchId);
-
-  if (!subscribers) return;
-
-  subscribers.delete(socket);
-
-  if (subscribers.size === 0) {
-    matchSubscribers.delete(matchId);
-  }
-}
-
-function cleanUpSubscriptions(socket: WebSocket) {
-  for (const [matchId] of matchSubscribers.entries()) {
-    unsubscribe(matchId, socket);
-  }
-}
-
 interface IncomingMessage {
   type: string;
   matchId: number;
-}
-
-function handleMessage(socket: ExtendedWebSocket, data: RawData): void {
-  let message: IncomingMessage;
-
-  try {
-    message = JSON.parse(data.toString());
-
-    if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
-      subscribe(message.matchId, socket);
-      socket.subscriptions?.add(message.matchId);
-      sendJson(socket, { type: "subscribed", matchId: message.matchId });
-    }
-
-    if (message?.type === "unsubscribe" && Number.isInteger(message.matchId)) {
-      unsubscribe(message.matchId, socket);
-      socket.subscriptions?.delete(message.matchId);
-      sendJson(socket, { type: "unsubscribed", matchId: message.matchId });
-    }
-  } catch {
-    sendJson(socket, { type: "error", error: "Invalid JSON format." });
-  }
 }
 
 function sendJson(socket: WebSocket, payload: JsonPayload): void {
@@ -82,23 +33,76 @@ function broadcastToAll(wss: WebSocketServer, payload: JsonPayload): void {
   });
 }
 
-function broadcastToMatch(matchId: number, payload: JsonPayload) {
-  const subscribers = matchSubscribers.get(matchId);
+export function attachWebSocketServer(server: HttpServer) {
+  const matchSubscribers = new Map<number, Set<WebSocket>>();
 
-  if (!subscribers || subscribers.size === 0) return;
+  function subscribe(matchId: number, socket: WebSocket) {
+    if (!matchSubscribers.has(matchId)) {
+      matchSubscribers.set(matchId, new Set());
+    }
+    matchSubscribers.get(matchId)?.add(socket);
+  }
 
-  for (const client of subscribers) {
-    if (client.readyState === WebSocket.OPEN) {
-      try {
-        client.send(JSON.stringify(payload));
-      } catch (err) {
-        console.error("Failed to send WebSocket message:", err);
+  function unsubscribe(matchId: number, socket: WebSocket) {
+    const subscribers = matchSubscribers.get(matchId);
+
+    if (!subscribers) return;
+
+    subscribers.delete(socket);
+
+    if (subscribers.size === 0) {
+      matchSubscribers.delete(matchId);
+    }
+  }
+
+  function cleanUpSubscriptions(socket: WebSocket) {
+    const extSocket = socket as ExtendedWebSocket;
+    if (!extSocket.subscriptions) return;
+    for (const matchId of extSocket.subscriptions) {
+      unsubscribe(matchId, socket);
+    }
+  }
+
+  function handleMessage(socket: ExtendedWebSocket, data: RawData): void {
+    let message: IncomingMessage;
+
+    try {
+      message = JSON.parse(data.toString());
+
+      if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
+        subscribe(message.matchId, socket);
+        socket.subscriptions?.add(message.matchId);
+        sendJson(socket, { type: "subscribed", matchId: message.matchId });
+      }
+
+      if (
+        message?.type === "unsubscribe" &&
+        Number.isInteger(message.matchId)
+      ) {
+        unsubscribe(message.matchId, socket);
+        socket.subscriptions?.delete(message.matchId);
+        sendJson(socket, { type: "unsubscribed", matchId: message.matchId });
+      }
+    } catch {
+      sendJson(socket, { type: "error", error: "Invalid JSON format." });
+    }
+  }
+
+  function broadcastToMatch(matchId: number, payload: JsonPayload) {
+    const subscribers = matchSubscribers.get(matchId);
+
+    if (!subscribers || subscribers.size === 0) return;
+
+    for (const client of subscribers) {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(JSON.stringify(payload));
+        } catch (err) {
+          console.error("Failed to send WebSocket message:", err);
+        }
       }
     }
   }
-}
-
-export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({
     noServer: true,
     path: "/ws",
