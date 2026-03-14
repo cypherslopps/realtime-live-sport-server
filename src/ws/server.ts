@@ -159,9 +159,11 @@ export function attachWebSocketServer(server: HttpServer) {
     sendJson(socket, { type: "welcome" });
 
     socket.on("message", (data) => handleMessage(socket, data));
-    socket.on("error", () => socket.terminate());
     socket.on("close", () => cleanUpSubscriptions(socket));
-    socket.on("error", console.error);
+    socket.on("error", (err) => {
+      console.error("WebSocket error:", err);
+      socket.terminate();
+    });
   });
 
   function broadcastMatchCreated(match: Matches) {

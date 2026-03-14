@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1773334318143,
-      "tag": "0000_unknown_morlocks",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1773409839043,
-      "tag": "0001_romantic_aaron_stack",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1773410808089,
-      "tag": "0002_careless_queen_noir",
+      "when": 1773494635904,
+      "tag": "0000_dazzling_spitfire",
       "breakpoints": true
     }
   ]
