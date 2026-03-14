@@ -160,8 +160,7 @@ The app integrates **Arcjet** to apply request throttling and bot protection for
 No unit/integration tests are included yet. Future improvements can include:
 
 - Jest + Supertest for API routes
-- WebSocket integration tests
-- Database migrations + seed tests
+- WebSocket integration test
 
 ---
 
