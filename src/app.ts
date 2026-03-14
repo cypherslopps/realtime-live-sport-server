@@ -18,10 +18,6 @@ const server = http.createServer(app);
 app.use(securityMiddleware());
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("Hello world");
-});
-
 app.use("/matches", matchRouter);
 app.use("/matches/:id/commentary", commentaryRouter);
 
@@ -29,6 +25,14 @@ const { broadcastMatchCreated, broadcastCommentary } =
   attachWebSocketServer(server);
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
 app.locals.broadcastCommentary = broadcastCommentary;
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
 
 server.listen(PORT, HOST, () => {
   const baseUrl =
