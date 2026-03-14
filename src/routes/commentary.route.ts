@@ -47,7 +47,6 @@ commentaryRouter.get("/", async (req, res) => {
 });
 
 commentaryRouter.post("/", async (req, res) => {
-  console.log(req.params, req.body, req.query, req);
   const parsedParams = matchIdParamSchema.safeParse(req.params);
 
   if (!parsedParams.success) {
@@ -74,6 +73,10 @@ commentaryRouter.post("/", async (req, res) => {
         ...parsedBody.data,
       })
       .returning();
+
+    if (comment) {
+      res.app.locals.broadcastCommentary(comment.matchId, comment);
+    }
 
     res.status(201).json({ data: comment });
   } catch (err) {
